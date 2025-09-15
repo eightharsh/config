@@ -1,8 +1,3 @@
-# ====================================================================
-# PREMIUM ZSHRC - Vim Minimal Dark Integration
-# Optimized for Ghostty terminal with Iosevka Term font
-# Professional, distraction-free, performance-focused
-# ====================================================================
 
 # Performance optimization - load modules only when needed
 zmodload zsh/complist
@@ -64,18 +59,23 @@ setopt PATH_DIRS                 # Search for subdirectories in $path
 # ADVANCED COMPLETION SYSTEM - Vim color integration
 # ====================================================================
 
-# Intelligent completion loading
+# Intelligent completion loading - optimized
 autoload -Uz compinit
-for dump in ~/.zcompdump(N.mh+24); do
-  compinit
-  break
-done
-[[ -z "$dump" ]] && compinit -C
+() {
+    setopt LOCAL_OPTIONS EXTENDED_GLOB
+    local zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+    # Only rebuild if dump is more than 24 hours old
+    if [[ $zcompdump(#qNmh+24) ]]; then
+        compinit
+    else
+        compinit -C
+    fi
+}
 
 # Enhanced completion behavior
 zstyle ':completion:*' completer _extensions _complete _approximate
 zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path ~/.zsh/cache
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/.zcompcache"
 zstyle ':completion:*' complete-options true
 zstyle ':completion:*' file-sort modification
 zstyle ':completion:*' menu select
@@ -107,30 +107,32 @@ zstyle ':completion:*:*:kill:*' force-list always
 # SOPHISTICATED PROMPT - Vim Minimal Dark inspired
 # ====================================================================
 
-# Git status with enhanced information
+# Git status with enhanced information - optimized
 git_info() {
-    local branch ref dirty ahead behind
+    # Only execute in git repositories
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    
+    local branch ref dirty ahead behind commits
     
     # Get current branch or short SHA
     ref=$(git symbolic-ref --quiet HEAD 2>/dev/null) || \
     ref=$(git rev-parse --short HEAD 2>/dev/null) || return 0
     branch=${ref#refs/heads/}
     
-    # Check if dirty
-    if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-        dirty="*"
-    fi
+    # Check if dirty (faster than porcelain for simple check)
+    [[ -n $(git status --porcelain --untracked-files=no 2>/dev/null) ]] && dirty="*"
     
-    # Check ahead/behind
-    local commits
-    commits=$(git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)
-    case "$commits" in
-        "") ;;
-        "0	0") ;;
-        "0	"*) ahead=" ↑${commits#0	}" ;;
-        *"	0") behind=" ↓${commits%	0}" ;;
-        *) ahead=" ↑${commits#*	}"; behind=" ↓${commits%	*}" ;;
-    esac
+    # Check ahead/behind only if upstream exists
+    if git rev-parse --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+        commits=$(git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)
+        case "$commits" in
+            "") ;;
+            "0	0") ;;
+            "0	"*) ahead=" ↑${commits#0	}" ;;
+            *"	0") behind=" ↓${commits%	0}" ;;
+            *) ahead=" ↑${commits#*	}"; behind=" ↓${commits%	*}" ;;
+        esac
+    fi
     
     if [[ -n $dirty ]]; then
         echo " %F{174}${branch}${dirty}%f%F{215}${ahead}${behind}%f"
@@ -149,25 +151,14 @@ venv_info() {
     # Conda environments
     elif [[ -n $CONDA_DEFAULT_ENV ]] && [[ "$CONDA_DEFAULT_ENV" != "base" ]]; then
         env_name="$CONDA_DEFAULT_ENV"
-    # Node.js version (if nvm is used)
-#    elif command -v node >/dev/null 2>&1; then
-#       local node_version
- #       node_version=$(node --version 2>/dev/null | sed 's/v//')
-  #      if [[ -n $node_version ]] && [[ "$node_version" != "system" ]]; then
-   #         env_name="node:$node_version"
-    #    fi
     fi
     
-    if [[ -n $env_name ]]; then
-        echo " %F{117}($env_name)%f"
-    fi
+    [[ -n $env_name ]] && echo " %F{117}($env_name)%f"
 }
 
 # SSH connection indicator
 ssh_info() {
-    if [[ -n $SSH_CONNECTION ]]; then
-        echo "%F{139}@%m%f "
-    fi
+    [[ -n $SSH_CONNECTION ]] && echo "%F{139}@%m%f "
 }
 
 # Exit status indicator (only shown on non-zero exit)
@@ -178,9 +169,8 @@ exit_status_info() {
 # Sophisticated two-line prompt
 PROMPT='%K{235}%F{245}%~%f$(git_info)$(venv_info)%k '
 
-
 # Enhanced right prompt with additional info
-#RPROMPT='%F{245}%D{%H:%M:%S}%f'
+RPROMPT='%F{245}%D{%H:%M:%S}%f'
 
 # ====================================================================
 # ENHANCED ALIASES - Comprehensive and intuitive
@@ -188,10 +178,10 @@ PROMPT='%K{235}%F{245}%~%f$(git_info)$(venv_info)%k '
 
 # Intelligent ls aliases with Vim-inspired colors
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    alias ls='ls -G --color=auto'
-    alias ll='ls -lhG --color=auto'
-    alias la='ls -lahG --color=auto'
-    alias lt='ls -ltrhG --color=auto'
+    alias ls='ls -G'
+    alias ll='ls -lhG'
+    alias la='ls -lahG'
+    alias lt='ls -ltrhG'
 else
     alias ls='ls --color=auto -h'
     alias ll='ls -lh --color=auto'
@@ -285,22 +275,25 @@ alias hosts='sudo ${EDITOR:-vim} /etc/hosts'
 # ENHANCED FUNCTIONS - Powerful utilities
 # ====================================================================
 
-# Intelligent cd with ls and git status
+# Intelligent cd with ls and git status - optimized
+unalias cd 2>/dev/null
 cd() {
     builtin cd "$@" || return $?
     
-    # Show directory contents (limited to prevent spam)
-    local file_count=$(ls -1 | wc -l | tr -d ' ')
-    if [[ $file_count -le 50 ]]; then
+    # Show directory contents (limited to prevent spam) - optimized
+    local file_count=$(command ls -1 2>/dev/null | wc -l | tr -d ' ')
+    if (( file_count <= 50 )); then
         ls
+    elif (( file_count <= 200 )); then
+        echo "Directory contains $file_count files (showing first 20)"
+        command ls | head -20
+        echo "... and $(( file_count - 20 )) more files"
     else
         echo "Directory contains $file_count files (too many to list)"
-        ls | head -20
-        echo "... and $(($file_count - 20)) more files"
     fi
     
-    # Show git status if in a git repo
-    if git rev-parse --git-dir > /dev/null 2>&1; then
+    # Show git status if in a git repo - only check once
+    if git rev-parse --git-dir >/dev/null 2>&1; then
         echo ""
         git status --short --branch
     fi
@@ -308,19 +301,13 @@ cd() {
 
 # Enhanced directory creation
 mkcd() {
-    if [[ $# -ne 1 ]]; then
-        echo "Usage: mkcd <directory>"
-        return 1
-    fi
+    [[ $# -ne 1 ]] && { echo "Usage: mkcd <directory>"; return 1; }
     mkdir -p "$1" && cd "$1"
 }
 
 # Intelligent find
 ff() {
-    if [[ $# -eq 0 ]]; then
-        echo "Usage: ff <pattern> [path]"
-        return 1
-    fi
+    [[ $# -eq 0 ]] && { echo "Usage: ff <pattern> [path]"; return 1; }
     local pattern="$1"
     local path="${2:-.}"
     find "$path" -iname "*$pattern*" 2>/dev/null | head -50
@@ -328,10 +315,7 @@ ff() {
 
 # Find in files
 fif() {
-    if [[ $# -eq 0 ]]; then
-        echo "Usage: fif <pattern> [path]"
-        return 1
-    fi
+    [[ $# -eq 0 ]] && { echo "Usage: fif <pattern> [path]"; return 1; }
     local pattern="$1"
     local path="${2:-.}"
     grep -r -n --color=always "$pattern" "$path" 2>/dev/null | head -50
@@ -339,15 +323,8 @@ fif() {
 
 # Enhanced extract function
 extract() {
-    if [[ $# -ne 1 ]]; then
-        echo "Usage: extract <archive>"
-        return 1
-    fi
-    
-    if [[ ! -f "$1" ]]; then
-        echo "Error: '$1' is not a valid file"
-        return 1
-    fi
+    [[ $# -ne 1 ]] && { echo "Usage: extract <archive>"; return 1; }
+    [[ ! -f "$1" ]] && { echo "Error: '$1' is not a valid file"; return 1; }
     
     case "$1" in
         *.tar.bz2)   tar xjf "$1"     ;;
@@ -371,10 +348,7 @@ extract() {
 
 # Quick backup with timestamp
 bak() {
-    if [[ $# -ne 1 ]]; then
-        echo "Usage: bak <file>"
-        return 1
-    fi
+    [[ $# -ne 1 ]] && { echo "Usage: bak <file>"; return 1; }
     local timestamp=$(date +%Y%m%d_%H%M%S)
     cp "$1" "${1}.bak_${timestamp}"
     echo "Backed up '$1' to '${1}.bak_${timestamp}'"
@@ -382,10 +356,7 @@ bak() {
 
 # Process management
 pskill() {
-    if [[ $# -eq 0 ]]; then
-        echo "Usage: pskill <process_name>"
-        return 1
-    fi
+    [[ $# -eq 0 ]] && { echo "Usage: pskill <process_name>"; return 1; }
     ps aux | grep "$1" | grep -v grep | awk '{print $2}' | xargs kill -9
 }
 
@@ -400,7 +371,7 @@ dirsize() {
 # ====================================================================
 
 # Enhanced PATH management
-typeset -U path
+typeset -U path cdpath fpath manpath
 path=(
     $HOME/bin
     $HOME/.local/bin
@@ -456,14 +427,34 @@ export NODE_OPTIONS="--max-old-space-size=4096"
 # CONDITIONAL LOADING - Intelligent tool detection
 # ====================================================================
 
-# Node Version Manager
-if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+# Lazy loading function for better performance
+lazy_load() {
+    local command="$1"
+    local load_function="$2"
+    
+    eval "$command() {
+        unfunction $command
+        $load_function
+        $command \"\$@\"
+    }"
+}
+
+# Node Version Manager - lazy loaded
+if [[ -d "$HOME/.nvm" ]]; then
     export NVM_DIR="$HOME/.nvm"
-    source "$NVM_DIR/nvm.sh"
-    [[ -s "$NVM_DIR/bash_completion" ]] && source "$NVM_DIR/bash_completion"
+    lazy_load nvm 'source "$NVM_DIR/nvm.sh"; [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"'
+    lazy_load node 'source "$NVM_DIR/nvm.sh"'
+    lazy_load npm 'source "$NVM_DIR/nvm.sh"'
 fi
 
-# Homebrew (multiple locations)
+# Alternative NVM path
+if [[ -s "/opt/homebrew/opt/nvm/nvm.sh" ]]; then
+    export NVM_DIR="$HOME/.nvm"
+    [[ ! -d "$NVM_DIR" ]] && mkdir -p "$NVM_DIR"
+    lazy_load nvm 'source "/opt/homebrew/opt/nvm/nvm.sh"'
+fi
+
+# Homebrew - optimized detection
 for brew_path in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
     if [[ -x "$brew_path" ]]; then
         eval "$($brew_path shellenv)"
@@ -474,25 +465,32 @@ done
 # Rust/Cargo
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
-# Python environment managers
-[[ -f "$HOME/.pyenv/bin/pyenv" ]] && {
+# Python environment managers - lazy loaded
+if [[ -d "$HOME/.pyenv" ]]; then
     export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-}
+    path=("$PYENV_ROOT/bin" $path)
+    lazy_load pyenv 'eval "$(pyenv init -)"'
+fi
 
 # Ruby Version Manager
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
 
 # Go environment
-[[ -d "/usr/local/go/bin" ]] && export PATH="/usr/local/go/bin:$PATH"
-[[ -d "$HOME/go/bin" ]] && export PATH="$HOME/go/bin:$PATH"
+[[ -d "/usr/local/go/bin" ]] && path=("/usr/local/go/bin" $path)
+[[ -d "$HOME/go/bin" ]] && path=("$HOME/go/bin" $path)
+
+# Bun
+if [[ -d "$HOME/.bun" ]]; then
+    export BUN_INSTALL="$HOME/.bun"
+    path=("$BUN_INSTALL/bin" $path)
+    [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
+fi
 
 # ====================================================================
 # ENHANCED ZSH PLUGINS - With Vim-inspired styling
 # ====================================================================
 
-# Auto-suggestions with Vim styling
+# Auto-suggestions with Vim styling - lazy loaded
 if [[ -f "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
     source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
     export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245,italic'  # Vim comment style
@@ -503,8 +501,6 @@ fi
 
 # Syntax highlighting with complete Vim color integration
 if [[ -f "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
-    source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-    
     # Comprehensive Vim Minimal Dark color scheme
     typeset -A ZSH_HIGHLIGHT_STYLES
     ZSH_HIGHLIGHT_STYLES[default]='fg=253'                           # Normal: #dadada
@@ -547,6 +543,9 @@ if [[ -f "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zs
     ZSH_HIGHLIGHT_STYLES[suffix-alias]='fg=150,underline'            # Function: #afd787
     ZSH_HIGHLIGHT_STYLES[global-alias]='fg=150,underline'            # Function: #afd787
     ZSH_HIGHLIGHT_STYLES[hashed-command]='fg=150'                    # Function: #afd787
+    
+    # Load syntax highlighting last
+    source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
 # History substring search with Vim colors
@@ -595,26 +594,20 @@ bindkey '^[[Z' reverse-menu-complete  # Shift+Tab
 # Clean up duplicates in PATH
 typeset -U path cdpath fpath manpath
 
+# Auto-update check for Homebrew (once per day)
+if command -v brew >/dev/null 2>&1; then
+    HOMEBREW_AUTO_UPDATE_SECS=86400
+fi
+
+# Zoxide initialization - moved to end for better performance
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init zsh)"
+    # Override cd with zoxide if available
+    alias cd='z'
+fi
+
 # Load local customizations
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # Performance monitoring (optional - uncomment to enable)
 # zmodload zsh/zprof
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-
-# bun completions
-[ -s "/Users/eightharsh/.bun/_bun" ] && source "/Users/eightharsh/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-
-
-
-
-#zoxide 
-eval "$(zoxide init zsh)"
-
