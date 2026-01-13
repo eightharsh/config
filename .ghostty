@@ -1,0 +1,72 @@
+font-family = "BlexMono Nerd Font"
+font-size = 16
+background = "#1c1c1c"
+foreground = "#dadada"
+selection-background = "#444444"
+cursor-style = block
+cursor-color = "#ffffff"
+background-opacity = 0.80
+minimum-contrast = 2
+scrollback-limit = 100000000
+
+mouse-hide-while-typing = true
+
+
+theme = Gruvbox dark
+
+
+window-padding-x = 4
+window-padding-y = 2
+window-decoration = false
+bold-is-bright = true
+mouse-shift-capture = true
+
+keybind = ctrl+shift+c=copy_to_clipboard
+keybind = ctrl+shift+v=paste_from_clipboard
+gtk-single-instance = desktop
+term = "xterm-256color"
+
+#window-height=510
+#window-width=1640
+#window-position-x = 330
+#window-position-y = 225
+
+window-save-state = always
+mouse-hide-while-typing = true
+#window-decoration = true
+background-blur-radius = 20
+clipboard-read = "allow"
+clipboard-paste-protection = false
+
+# Navigate window splits
+keybind = cmd+shift+h=goto_split:left
+keybind = cmd+shift+j=goto_split:bottom
+keybind = cmd+shift+k=goto_split:top
+keybind = cmd+shift+l=goto_split:right
+
+# Enhanced splitting and tabs
+keybind = cmd+d=new_split:right
+keybind = cmd+shift+d=new_split:down
+keybind = cmd+w=close_surface
+keybind = cmd+t=new_tab
+keybind = cmd+shift+right_bracket=next_tab
+keybind = cmd+shift+left_bracket=previous_tab
+
+# Font size controls
+keybind = cmd+equal=increase_font_size:1
+keybind = cmd+minus=decrease_font_size:1
+keybind = cmd+zero=reset_font_size
+
+# Window management
+keybind = cmd+shift+enter=toggle_fullscreen
+
+# Selection improvements
+selection-foreground = "#ffffff"
+
+# Shell integration
+shell-integration = detect
+
+# Additional settings
+copy-on-select = false
+focus-follows-mouse = false
+title = "Ghostty"
