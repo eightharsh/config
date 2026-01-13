@@ -1,0 +1,33 @@
+[user]
+	name =
+    email =   
+
+
+[core]
+    editor = vim
+    autocrlf = input
+    pager = less -FX
+    excludesfile = ~/.gitignore_global
+
+[color]
+    ui = auto
+
+[alias]
+    st = status
+    co = checkout
+    br = branch
+    cm = commit -m
+    df = diff
+    lg = log --oneline --graph --decorate --all
+
+[push]
+    default = simple
+
+[pull]
+    rebase = false
+
+[init]
+    defaultBranch = main
+
+[credential]
+    helper = osxkeychain
